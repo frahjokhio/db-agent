@@ -2,11 +2,14 @@
 .db-agent/config.env
 .db-agent/*.db
 .db-agent/*.db-*
-# .db-agent/rules.yaml is safe to commit (business rules, no secrets)
 
-# Private planning docs (kept locally, never pushed)
+# Private / local-only files (kept on disk, never pushed)
 database_ai_agent_technical_blueprint.md
+PROJECT_STATUS.md
+.db-agent/rules.yaml
+config.env.example
+scripts/mcp-smoke.mjs
 
-# Go build output
-bin/
-dist/
+# Go build output (root folders only; npm/cli/bin/ must stay tracked)
+/bin/
+/dist/
