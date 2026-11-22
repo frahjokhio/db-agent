@@ -1,0 +1,21 @@
+# Development only: a sample MySQL database for building and testing the agent.
+# End users do NOT need Docker.
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: db-agent-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: shop
+    ports:
+      - "3307:3306"   # 3307 avoids clashing with Herd's MySQL on 3306
+    volumes:
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      retries: 20
+
+volumes:
+  mysql_data:

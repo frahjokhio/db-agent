@@ -1,0 +1,26 @@
+{
+  "name": "@db-agent/cli",
+  "version": "0.1.0",
+  "description": "Safe database tools for the AI you already use (Claude, ChatGPT, Cursor, Codex) via MCP. Ask your MySQL database questions in plain English.",
+  "keywords": ["mcp", "mysql", "database", "ai", "claude", "cursor", "text-to-sql", "laravel"],
+  "license": "MIT",
+  "homepage": "https://github.com/frahjokhio/db-agent#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frahjokhio/db-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/frahjokhio/db-agent/issues"
+  },
+  "bin": {
+    "db-agent": "bin/db-agent.js"
+  },
+  "files": ["bin/db-agent.js", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=16"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "optionalDependencies": {}
+}

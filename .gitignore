@@ -1,0 +1,12 @@
+# Agent settings (holds the DB password) + local agent data
+.db-agent/config.env
+.db-agent/*.db
+.db-agent/*.db-*
+# .db-agent/rules.yaml is safe to commit (business rules, no secrets)
+
+# Private planning docs (kept locally, never pushed)
+database_ai_agent_technical_blueprint.md
+
+# Go build output
+bin/
+dist/

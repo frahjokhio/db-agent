@@ -1,0 +1,43 @@
+# Builds release binaries when a version tag is pushed (e.g. git tag v0.1.1 && git push origin v0.1.1)
+# and attaches them to a GitHub Release. install.sh / install.ps1 download from there.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build binaries
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          LDFLAGS="-s -w -X github.com/frahjokhio/db-agent/internal/cli.Version=${VERSION}"
+          mkdir -p dist/release
+          build() { CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -trimpath -ldflags "$LDFLAGS" -o "dist/release/$3" ./cmd/db-agent; }
+          build windows amd64 db-agent-win32-x64.exe
+          build windows arm64 db-agent-win32-arm64.exe
+          build darwin  amd64 db-agent-darwin-x64
+          build darwin  arm64 db-agent-darwin-arm64
+          build linux   amd64 db-agent-linux-x64
+          build linux   arm64 db-agent-linux-arm64
+          cd dist/release && sha256sum db-agent-* > checksums.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/release/*
+          generate_release_notes: true
