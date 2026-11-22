@@ -43,17 +43,23 @@ func newInitCmd() *cobra.Command {
 					return nil
 				}
 			}
+			// Asked one by one so the order on screen is natural.
+			project := ask(in, "Project name", filepath.Base(dir))
+			host := ask(in, "MySQL host", "127.0.0.1")
 			port := ask(in, "MySQL port", "3306")
 			if _, err := strconv.Atoi(port); err != nil {
 				return fail("port must be a number")
 			}
+			name := ask(in, "Database name", "")
+			user := ask(in, "Username (read-only recommended)", "")
+			password := askSecret(in, "Password")
 			values := map[string]string{
-				"DB_AGENT_PROJECT_NAME": ask(in, "Project name", filepath.Base(dir)),
-				"DB_AGENT_DB_HOST":      ask(in, "MySQL host", "127.0.0.1"),
+				"DB_AGENT_PROJECT_NAME": project,
+				"DB_AGENT_DB_HOST":      host,
 				"DB_AGENT_DB_PORT":      port,
-				"DB_AGENT_DB_NAME":      ask(in, "Database name", ""),
-				"DB_AGENT_DB_USER":      ask(in, "Username (read-only recommended)", ""),
-				"DB_AGENT_DB_PASSWORD":  askSecret(in, "Password"),
+				"DB_AGENT_DB_NAME":      name,
+				"DB_AGENT_DB_USER":      user,
+				"DB_AGENT_DB_PASSWORD":  password,
 			}
 			saved, err := config.Save(dir, values)
 			if err != nil {

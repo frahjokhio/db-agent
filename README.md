@@ -1,85 +1,220 @@
-# Database AI Agent
+# db-agent
 
-Safe database tools for the AI you already use (Claude, ChatGPT, Cursor, Claude Code, Codex).
-Ask questions about your app's MySQL database in plain English. One executable file, no runtime needed.
+[![npm](https://img.shields.io/npm/v/@db-agent/cli)](https://www.npmjs.com/package/@db-agent/cli)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-## Quick start
+**Ask your MySQL database questions in plain English, using the AI you already have:** Claude Code, Cursor, Claude Desktop, Codex, or any MCP client.
 
-Run in your project folder (needs Node only to install; the agent itself is a native binary):
+> "Who are my top 5 customers this month?" · "How many orders were refunded last week?" · "Which products never sold?"
+
+- **No new AI subscription.** db-agent gives your AI safe database tools over [MCP](https://modelcontextprotocol.io). Your AI does the thinking.
+- **Read-only and safe.** Every query is checked before it runs. Writes, system tables and secret columns are blocked.
+- **Works with any app** that uses MySQL: Laravel, Node, Django, Rails, plain PHP...
+- **One small program.** No runtime to install. Your app's code and `.env` are never touched.
+
+---
+
+## 1. Install
+
+Pick one:
 
 ```bash
-npx -y @db-agent/cli init          # enter DB details once (saved in .db-agent/config.env)
-npx -y @db-agent/cli mcp-config    # paste the output into your AI tool
-npx -y @db-agent/cli rules init    # optional: business definitions for better answers
-```
+# Node.js users (nothing else to install)
+npx -y @db-agent/cli version
 
-Then ask your AI: *"Who are my top 5 customers by revenue this month?"*
-
-### Install without Node
-
-```bash
-# Linux / macOS
+# macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/frahjokhio/db-agent/main/install.sh | sh
+
 # Windows (PowerShell)
 irm https://raw.githubusercontent.com/frahjokhio/db-agent/main/install.ps1 | iex
-# Go developers
-go install github.com/frahjokhio/db-agent/cmd/db-agent@latest
 ```
-Then: `db-agent init` and `db-agent mcp-config`.
 
-- Works with any app that uses MySQL (Laravel, Node, Python, ...). Your app's own `.env` is never touched.
-- Read-only by default: every query is checked (single SELECT, no system tables, no secret columns, row and time limits) and logged.
-- Use a MySQL user with SELECT-only rights for extra safety.
-- Add `.db-agent/config.env` and `.db-agent/*.db` to `.gitignore`. `rules.yaml` is safe to commit.
+> Using npx? Replace `db-agent` with `npx -y @db-agent/cli` in the commands below.
+
+## 2. Create a read-only MySQL user (recommended)
+
+The agent never writes, but a SELECT-only user makes that a hard guarantee from the database itself.
+
+```sql
+CREATE USER 'db_agent'@'%' IDENTIFIED BY 'choose-a-strong-password';
+GRANT SELECT ON your_database.* TO 'db_agent'@'%';
+```
+
+## 3. Connect your database
+
+Run this **in your project folder**:
+
+```bash
+db-agent init
+```
+
+It asks for:
+
+| Question | Example |
+|---|---|
+| Project name | `My Shop` |
+| MySQL host | `127.0.0.1` |
+| MySQL port | `3306` |
+| Database name | `my_shop` |
+| Username | `db_agent` |
+| Password | *(hidden while typing)* |
+
+Settings are saved to `.db-agent/config.env` in your project, and the connection is tested.
+
+Add these lines to your project's `.gitignore` (password + local data):
+
+```
+.db-agent/config.env
+.db-agent/*.db
+```
+
+## 4. Connect your AI tool
+
+```bash
+db-agent mcp-config
+```
+
+This prints ready-to-paste setup for your tool. For example:
+
+**Claude Code**: run the printed command, e.g.
+```bash
+claude mcp add db-agent -- db-agent mcp --dir "/path/to/your/project"
+```
+
+**Cursor**: `.cursor/mcp.json` · **Claude Desktop**: `claude_desktop_config.json`
+```json
+{
+  "mcpServers": {
+    "db-agent": {
+      "command": "db-agent",
+      "args": ["mcp", "--dir", "/path/to/your/project"]
+    }
+  }
+}
+```
+
+**Codex**: `~/.codex/config.toml`
+```toml
+[mcp_servers.db-agent]
+command = "db-agent"
+args = ["mcp", "--dir", "/path/to/your/project"]
+```
+
+Restart your AI tool. You should see **db-agent** with 6 tools.
+
+## 5. Ask questions
+
+Just ask in your AI chat:
+
+- *"What tables do we have and how are they related?"*
+- *"How many new users signed up each week this month?"*
+- *"Top 10 products by revenue in 2026"*
+- *"Customers who registered but never ordered"*
+
+Answers come back as short bullet points. Ask *"show me the SQL"* any time.
+
+---
+
+## Business rules (optional, recommended)
+
+Your database doesn't know what "revenue" or "active user" means in **your** business. Tell it once:
+
+```bash
+db-agent rules init      # creates .db-agent/rules.yaml with suggestions for your schema
+db-agent rules           # checks the file against your database
+```
+
+```yaml
+timezone: Asia/Karachi
+
+definitions:
+  active member: A row in members with status = 'active' and expires_at in the future.
+
+notes:
+  - Amounts are in USD.
+
+relationships:            # confirm links that have no foreign key
+  - order_items.order_id -> orders.id
+
+hidden:
+  tables: [audit_logs]    # never shown to the AI
+  columns: [users.email]
+
+tables:
+  orders:
+    description: One row per checkout.
+    columns:
+      status: "'paid' = money received; 'refunded' = money returned."
+```
+
+Changes apply within a minute. `rules.yaml` has no secrets, so you can commit it.
+
+## Configuration
+
+All settings live in `.db-agent/config.env`. Environment variables with the same name override the file (handy on servers and CI).
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `DB_AGENT_DB_HOST` | `127.0.0.1` | MySQL host |
+| `DB_AGENT_DB_PORT` | `3306` | MySQL port |
+| `DB_AGENT_DB_NAME` | *(required)* | Database name |
+| `DB_AGENT_DB_USER` | *(required)* | MySQL user (read-only recommended) |
+| `DB_AGENT_DB_PASSWORD` | *(empty)* | MySQL password |
+| `DB_AGENT_PROJECT_NAME` | `My Project` | Name shown to the AI |
+| `DB_AGENT_MAX_ROWS` | `100` | Max rows per query (1–10000) |
+| `DB_AGENT_QUERY_TIMEOUT_SECONDS` | `30` | Stop slow queries after this many seconds |
+
+**Laravel tip:** use the same host, port and database as `DB_HOST`, `DB_PORT`, `DB_DATABASE` in your Laravel `.env`.
+
+## What is blocked
+
+- Anything except a single `SELECT`: no `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `SET`, `CALL`...
+- Other databases and system tables (`mysql.*`, `information_schema`...)
+- Secret-looking columns (`password`, `token`, `secret`, `api_key`...) and anything you hide in `rules.yaml`
+- Slow or abusive functions (`SLEEP`, `BENCHMARK`, `LOAD_FILE`...)
+- Results are capped (`MAX_ROWS`) and queries time out (`QUERY_TIMEOUT_SECONDS`)
+
+Every query (allowed or blocked) is logged on your machine. See it with `db-agent history`.
 
 ## Commands
 
-| Command | Purpose |
+| Command | What it does |
 |---|---|
-| `db-agent` | Status + next steps |
-| `db-agent init` | Save DB connection to `.db-agent/config.env` and test it |
+| `db-agent` | Status and next steps |
+| `db-agent init` | Connect a database (creates `.db-agent/config.env`) |
 | `db-agent check` | Test the connection |
-| `db-agent schema [table]` | Show structure |
-| `db-agent rules` | Show business rules and check them against the database |
-| `db-agent rules init` | Create a starter `.db-agent/rules.yaml` |
-| `db-agent query "SELECT ..."` | Run SQL with the same safety checks the AI uses |
-| `db-agent history` | Recent queries (ok / blocked / failed) |
-| `db-agent mcp` | MCP server (your AI tool starts this) |
-| `db-agent mcp-config` | Print setup for Claude Code / Cursor / Claude Desktop / Codex |
+| `db-agent schema [table]` | Show tables, columns and links |
+| `db-agent rules` / `rules init` | Check / create business rules |
+| `db-agent query "SELECT ..."` | Run a query with the same safety checks |
+| `db-agent history` | Recent queries (ok, blocked, failed) |
+| `db-agent mcp-config` | Print setup for your AI tool |
+| `db-agent mcp` | The MCP server (your AI tool starts it) |
 
-Global flag: `--dir <project folder>` (default: current folder).
+Add `--dir <project folder>` to any command to use another project.
 
-## Development
+## Troubleshooting
 
-Needs Go 1.27+ and Docker (for the sample MySQL only).
+| Problem | Fix |
+|---|---|
+| `db-agent mcp` shows nothing | Normal: it waits for your AI tool. Press Ctrl+C. |
+| AI tool shows db-agent as failed | Run `db-agent check` in the project folder. |
+| `Access denied` | Wrong user/password, or the user lacks `SELECT` on the database. |
+| `Can't connect` | Check host/port. MySQL in Docker: use the published port. |
+| Windows + npx in AI tools | Use the config from `db-agent mcp-config` (it adds `cmd /c` for you). |
 
-```bash
-docker compose up -d                          # sample MySQL on port 3307
-mkdir .db-agent && copy config.env.example .db-agent\config.env   # macOS/Linux: cp
-go run ./cmd/db-agent check
-go test ./...
-go build -ldflags "-s -w" -o bin/db-agent.exe ./cmd/db-agent
-```
+**Requirements:** MySQL 5.7.8+ or 8.x. (MariaDB is not supported yet.) Node.js 16+ only if you install with npx.
 
-Cross-build: `GOOS=linux GOARCH=amd64 go build -o bin/db-agent-linux ./cmd/db-agent`
+## Updating and uninstalling
 
-## npm packaging
+- **npx:** always runs the latest version.
+- **Script install:** run the install command again.
+- **Uninstall:** delete the `db-agent` binary and your project's `.db-agent/` folder.
 
-`@db-agent/cli` is a tiny Node launcher. The Go binary ships in one package per OS/CPU
-(`@db-agent/win32-x64`, `@db-agent/linux-x64`, ...); npm installs only the matching one.
+## Feedback and contributions
 
-```bash
-node scripts/build-npm.mjs 0.1.0        # builds all 6 binaries + packages into dist/npm/
-node scripts/mcp-smoke.mjs <cmd...>     # quick MCP check of any start command
-```
+Found a bug or have an idea? [Open an issue](https://github.com/frahjokhio/db-agent/issues).
+Want to build on it? Fork the repository and work in your fork.
 
-Publish (manual, in this order):
-```bash
-npm login
-# 1) every platform package
-cd dist/npm/win32-x64 && npm publish     # repeat for win32-arm64, darwin-x64, darwin-arm64, linux-x64, linux-arm64
-# 2) then the launcher
-cd dist/npm/cli && npm publish
-```
+---
 
-See `database_ai_agent_technical_blueprint.md` (plan) and `PROJECT_STATUS.md` (progress).
+MIT License · Built with Go · [npm](https://www.npmjs.com/package/@db-agent/cli) · [GitHub](https://github.com/frahjokhio/db-agent)
